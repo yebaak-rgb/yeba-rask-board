@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 협조 요청 시스템</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#111;min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:1.25rem 1rem 3rem}
+h1{font-size:18px;font-weight:600;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:1.25rem}
+.tabs{display:flex;gap:0;margin-bottom:1.25rem;border-bottom:1px solid #e0e0e0}
+.tab{padding:9px 18px;font-size:14px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab.active{color:#111;border-bottom:2px solid #111;font-weight:600}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1.25rem;margin-bottom:12px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:13px;color:#666;margin-bottom:5px;font-weight:500}
+input,select,textarea{width:100%;font-size:14px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#111;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:#555}
+textarea{resize:vertical;min-height:80px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+.btn{padding:9px 20px;font-size:14px;border-radius:8px;cursor:pointer;border:1px solid #ccc;background:#fff;color:#111;transition:background .15s}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:#111;color:#fff;border-color:#111}
+.btn-primary:hover{background:#333}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.filter-btn{padding:5px 14px;font-size:13px;border-radius:20px;cursor:pointer;border:1px solid #ddd;background:#f5f5f5;color:#666;transition:all .15s}
+.filter-btn.on{background:#111;color:#fff;border-color:#111}
+.task-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:1rem 1.25rem;margin-bottom:10px}
+.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.task-title{font-size:15px;font-weight:600;color:#111;line-height:1.4}
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:12px;font-weight:600}
+.badge-wait{background:#E6F1FB;color:#185FA5}
+.badge-ing{background:#FEF3C7;color:#92400E}
+.badge-done{background:#D1FAE5;color:#065F46}
+.badge-urgent{background:#FEE2E2;color:#991B1B}
+.task-meta{font-size:12px;color:#888;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.task-body{font-size:13px;color:#555;margin-bottom:10px;line-height:1.6}
+.task-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.task-actions select{width:auto;font-size:12px;padding:5px 8px}
+.task-actions input{font-size:12px;padding:5px 8px;flex:1;min-width:100px}
+.task-actions .btn{font-size:12px;padding:5px 12px}
+.comment-box{margin-top:8px;font-size:12px;color:#555;background:#f9f9f9;padding:8px 10px;border-radius:8px;border-left:3px solid #ddd}
+.empty{text-align:center;padding:3rem;color:#bbb;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+@media(max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:.9rem 1rem;text-align:center}
+.stat-num{font-size:24px;font-weight:700;color:#111}
+.stat-label{font-size:11px;color:#999;margin-top:2px}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
+.dept-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#EEF2FF;color:#3730A3;margin-right:4px;font-weight:500}
+.overdue{color:#DC2626;font-size:11px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>업무 협조 요청 시스템</h1>
+  <div class="sub">부서 간 업무 누락 없이 협조하세요</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">전체 현황</button>
+    <button class="tab" onclick="switchTab('new')">+ 업무 요청</button>
+    <button class="tab" onclick="switchTab('mine')">내가 받은 요청</button>
+  </div>
+
+  <!-- 전체 현황 -->
+  <div class="section active" id="tab-dashboard">
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <button class="filter-btn on" onclick="setFilter('all',this)">전체</button>
+      <button class="filter-btn" onclick="setFilter('대기',this)">대기 중</button>
+      <button class="filter-btn" onclick="setFilter('진행중',this)">진행 중</button>
+      <button class="filter-btn" onclick="setFilter('완료',this)">완료</button>
+      <button class="filter-btn" onclick="setFilter('긴급',this)">긴급</button>
+    </div>
+    <div id="task-list"></div>
+  </div>
+
+  <!-- 업무 요청 -->
+  <div class="section" id="tab-new">
+    <div class="card">
+      <div style="font-size:15px;font-weight:600;margin-bottom:1rem">새 업무 요청 등록</div>
+      <div class="row2">
+        <div class="form-group">
+          <label>요청자 이름</label>
+          <input id="f-name" type="text" placeholder="예) 김수진">
+        </div>
+        <div class="form-group">
+          <label>요청자 부서</label>
+          <select id="f-from">
+            <option value="">선택하세요</option>
+            <option>진료부</option>
+            <option>상담부</option>
+            <option>원무부</option>
+            <option>행정부</option>
+            <option>기공부</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="form-group">
+          <label>담당 부서</label>
+          <select id="f-dept">
+            <option value="">선택하세요</option>
+            <option>진료부</option>
+            <option>상담부</option>
+            <option>원무부</option>
+            <option>행정부</option>
+            <option>기공부</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>담당자 이름 (선택)</label>
+          <input id="f-assignee" type="text" placeholder="예) 이지영">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>업무 제목</label>
+        <input id="f-title" type="text" placeholder="예) 3월 보험청구 서류 검토 요청">
+      </div>
+      <div class="form-group">
+        <label>협조 내용</label>
+        <textarea id="f-content" placeholder="어떤 협조가 필요한지 자세히 적어주세요."></textarea>
+      </div>
+      <div class="row2">
+        <div class="form-group">
+          <label>마감 기한</label>
+          <input id="f-due" type="date">
+        </div>
+        <div class="form-group">
+          <label>우선순위</label>
+          <select id="f-priority">
+            <option value="일반">일반</option>
+            <option value="긴급">긴급</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="clearForm()">초기화</button>
+        <button class="btn btn-primary" onclick="submitTask()">요청 등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 내가 받은 요청 -->
+  <div class="section" id="tab-mine">
+    <div style="margin-bottom:12px">
+      <select id="dept-filter" onchange="renderMine()" style="font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;width:auto">
+        <option value="">내 부서를 선택하세요</option>
+        <option>진료부</option>
+        <option>상담부</option>
+        <option>원무부</option>
+        <option>행정부</option>
+        <option>기공부</option>
+      </select>
+    </div>
+    <div id="mine-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem('dc_tasks')||'[]');
+let dashFilter = 'all';
+
+function save(){localStorage.setItem('dc_tasks',JSON.stringify(tasks))}
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',['dashboard','new','mine'][i]===t)});
+  document.querySelectorAll('.section').forEach((s,i)=>{s.classList.toggle('active',['tab-dashboard','tab-new','tab-mine'][i]==='tab-'+t)});
+  if(t==='dashboard')renderDashboard();
+  if(t==='mine')renderMine();
+}
+
+function setFilter(f,el){
+  dashFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderDashboard();
+}
+
+function renderDashboard(){
+  const total=tasks.length,wait=tasks.filter(t=>t.status==='대기').length,
+    ing=tasks.filter(t=>t.status==='진행중').length,done=tasks.filter(t=>t.status==='완료').length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-label">전체 요청</div></div>
+    <div class="stat"><div class="stat-num">${wait}</div><div class="stat-label">대기 중</div></div>
+    <div class="stat"><div class="stat-num">${ing}</div><div class="stat-label">진행 중</div></div>
+    <div class="stat"><div class="stat-num">${done}</div><div class="stat-label">완료</div></div>`;
+  let filtered=[...tasks];
+  if(dashFilter==='긴급')filtered=filtered.filter(t=>t.priority==='긴급');
+  else if(dashFilter!=='all')filtered=filtered.filter(t=>t.status===dashFilter);
+  filtered.sort((a,b)=>new Date(a.due||'9999-12-31')-new Date(b.due||'9999-12-31'));
+  const el=document.getElementById('task-list');
+  if(!filtered.length){el.innerHTML='<div class="empty">등록된 업무 요청이 없어요</div>';return;}
+  el.innerHTML=filtered.map(t=>taskHTML(t)).join('');
+}
+
+function renderMine(){
+  const dept=document.getElementById('dept-filter').value;
+  const el=document.getElementById('mine-list');
+  if(!dept){el.innerHTML='<div class="empty">위에서 부서를 선택하세요</div>';return;}
+  const list=[...tasks].filter(t=>t.dept===dept&&t.status!=='완료')
+    .sort((a,b)=>new Date(a.due||'9999-12-31')-new Date(b.due||'9999-12-31'));
+  if(!list.length){el.innerHTML='<div class="empty">해당 부서로 들어온 요청이 없어요 👍</div>';return;}
+  el.innerHTML=list.map(t=>taskHTML(t)).join('');
+}
+
+function taskHTML(t){
+  const sb={'대기':'badge-wait','진행중':'badge-ing','완료':'badge-done'}[t.status]||'badge-wait';
+  const od=t.due&&t.status!=='완료'&&new Date(t.due)<new Date()?'<span class="overdue"> ⚠ 기한 초과</span>':'';
+  return `<div class="task-card">
+    <div class="task-header">
+      <div class="task-title">${t.title}</div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        ${t.priority==='긴급'?'<span class="badge badge-urgent">긴급</span>':''}
+        <span class="badge ${sb}">${t.status}</span>
+      </div>
+    </div>
+    <div class="task-meta">
+      <span>요청: <b>${t.fromName}</b> · ${t.from}</span>
+      <span>→ <span class="dept-tag">${t.dept}</span>${t.assignee||''}</span>
+      ${t.due?`<span>마감: ${t.due}${od}</span>`:''}
+      <span>${t.created}</span>
+    </div>
+    <div class="task-body">${t.content}</div>
+    <div class="task-actions">
+      <select onchange="changeStatus('${t.id}',this.value)">
+        <option ${t.status==='대기'?'selected':''}>대기</option>
+        <option ${t.status==='진행중'?'selected':''}>진행중</option>
+        <option ${t.status==='완료'?'selected':''}>완료</option>
+      </select>
+      <input id="cmt-${t.id}" type="text" placeholder="코멘트 추가..." value="${t.comment||''}">
+      <button class="btn" onclick="addComment('${t.id}')">저장</button>
+    </div>
+    ${t.comment?`<div class="comment-box">💬 ${t.comment}</div>`:''}
+  </div>`;
+}
+
+function changeStatus(id,val){
+  const t=tasks.find(t=>t.id===id);if(t){t.status=val;save();renderDashboard();}
+}
+function addComment(id){
+  const v=document.getElementById('cmt-'+id).value.trim();
+  const t=tasks.find(t=>t.id===id);
+  if(t&&v){t.comment=v;save();showToast('코멘트가 저장됐어요');renderDashboard();}
+}
+function submitTask(){
+  const name=document.getElementById('f-name').value.trim();
+  const from=document.getElementById('f-from').value;
+  const dept=document.getElementById('f-dept').value;
+  const title=document.getElementById('f-title').value.trim();
+  const content=document.getElementById('f-content').value.trim();
+  const due=document.getElementById('f-due').value;
+  const priority=document.getElementById('f-priority').value;
+  const assignee=document.getElementById('f-assignee').value.trim();
+  if(!name||!from||!dept||!title||!content){showToast('필수 항목을 모두 입력해주세요');return;}
+  tasks.unshift({id:Date.now().toString(),fromName:name,from,dept,assignee,title,content,due,priority,
+    status:'대기',created:new Date().toLocaleDateString('ko-KR'),comment:''});
+  save();clearForm();showToast('업무 요청이 등록됐어요 ✓');switchTab('dashboard');
+}
+function clearForm(){
+  ['f-name','f-title','f-content','f-due','f-assignee'].forEach(id=>document.getElementById(id).value='');
+  ['f-from','f-dept'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  document.getElementById('f-priority').value='일반';
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+renderDashboard();
+</script>
+</body>
+</html>
